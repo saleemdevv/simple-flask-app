@@ -1,30 +1,21 @@
 pipeline {
-    agent any // This applies to the entire pipeline unless overridden by a stage
+    agent any
 
     environment {
-        // Your Docker Hub username
         DOCKER_HUB_USERNAME = 'saleemkhandev'
-        // Target server IP address for your EC2 instance
-        TARGET_SERVER_IP = "122.248.206.50" // *** IMPORTANT: Double-check this IP is correct for your EC2 ***
-        // This must match the ID you set for your SSH private key credential in Jenkins Credentials
-        SSH_KEY_ID = "devops-target-server-ssh-key" // *** IMPORTANT: Verify this ID exactly matches your Jenkins credential ID ***
+        TARGET_SERVER_IP = "122.248.206.50"
+        SSH_KEY_ID = "devops-target-server-ssh-key"
     }
 
     stages {
-        // Jenkins automatically checks out the code configured in the job's SCM settings
-        // at the very beginning of the pipeline run, so an explicit 'Checkout SCM' stage isn't needed.
-
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh 'docker build -t $DOCKER_HUB_USERNAME/simple-flask-app:latest .'
-                }
+                sh 'docker build -t $DOCKER_HUB_USERNAME/simple-flask-app:latest .'
             }
         }
 
         stage('Login to Docker Hub') {
             steps {
-                // Uses a Jenkins 'Username with password' credential for Docker Hub
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-password-credential', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                     sh 'docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD'
                 }
@@ -40,18 +31,16 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
-            // This stage will run on the Jenkins master or any available agent.
-            // This avoids issues with a specific 'saleem' agent being offline or the sshAgent step.
             agent any
             steps {
                 script {
-                    // This uses the 'sshCommand' step from the 'SSH Steps' plugin.
-                    // Ensure the 'SSH Steps' plugin is installed in Jenkins.
                     sshCommand remote: [
+                        // ADDED THIS LINE:
+                        name: 'EC2-Target-Server', // You can give it any descriptive name
                         host: env.TARGET_SERVER_IP,
                         user: 'ec2-user', // *** IMPORTANT: Change to 'ubuntu' if your EC2 instance is Ubuntu, or another username if applicable ***
                         credentialsId: env.SSH_KEY_ID,
-                        allowAnyHosts: true // *** WARNING: For production, it's better to manage known_hosts for security. ***
+                        allowAnyHosts: true
                     ], command: """
                         set +e # Allow commands to fail without exiting the script immediately
                         
@@ -82,7 +71,7 @@ pipeline {
 
     post {
         always {
-            cleanWs() // Clean up the workspace after the pipeline
+            cleanWs()
         }
         failure {
             echo "Pipeline failed."
