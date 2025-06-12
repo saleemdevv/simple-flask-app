@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_HUB_USERNAME = 'saleemkhandev'
-        TARGET_SERVER_IP = "13.215.177.83"
+        TARGET_SERVER_IP = "13.250.40.188"
         SSH_KEY_ID = "devops-target-server-ssh-key"
     }
 
